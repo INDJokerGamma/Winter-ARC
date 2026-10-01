@@ -107,6 +107,10 @@ export default function DailyTracker() {
   const completedCount = goals.filter(g => getLogForGoal(g.id)?.status === 'completed').length
   const totalCount = goals.length
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+  const orderedGoals = [
+    ...goals.filter(goal => getLogForGoal(goal.id)?.status !== 'completed'),
+    ...goals.filter(goal => getLogForGoal(goal.id)?.status === 'completed'),
+  ]
 
   return (
     <div className="flex flex-col gap-6">
@@ -169,7 +173,7 @@ export default function DailyTracker() {
         </div>
       ) : (
         <div className="space-y-2">
-          {goals.map(goal => {
+          {orderedGoals.map(goal => {
             const log = getLogForGoal(goal.id)
             const isDone = log?.status === 'completed'
             return (
