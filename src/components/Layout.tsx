@@ -4,13 +4,13 @@ import { useAuth } from "./AuthProvider"
 import { BrandLogo } from "./BrandLogo"
 
 const navItems = [
-  { name: 'Dashboard', path: '/', icon: Home },
-  { name: 'My Goals', path: '/goals', icon: Target },
-  { name: 'Daily Tracker', path: '/tracker', icon: CheckSquare },
-  { name: 'Calendar', path: '/calendar', icon: CalendarDays },
-  { name: 'Analytics', path: '/analytics', icon: BarChart2 },
-  { name: 'Achievements', path: '/achievements', icon: Award },
-  { name: 'Settings', path: '/settings', icon: Settings },
+  { name: 'Dashboard', path: '/dashboard', icon: Home },
+  { name: 'My Goals', path: '/dashboard/goals', icon: Target },
+  { name: 'Daily Tracker', path: '/dashboard/tracker', icon: CheckSquare },
+  { name: 'Calendar', path: '/dashboard/calendar', icon: CalendarDays },
+  { name: 'Analytics', path: '/dashboard/analytics', icon: BarChart2 },
+  { name: 'Achievements', path: '/dashboard/achievements', icon: Award },
+  { name: 'Settings', path: '/dashboard/settings', icon: Settings },
 ]
 
 export default function Layout() {
@@ -22,7 +22,7 @@ export default function Layout() {
       {/* Desktop Sidebar */}
       <aside className="hidden w-64 flex-col border-r bg-card md:flex">
         <div className="flex h-14 items-center border-b px-6">
-          <Link to="/" className="flex items-center gap-2 font-bold tracking-tight text-lg">
+          <Link to="/dashboard" className="flex items-center gap-2 font-bold tracking-tight text-lg">
             <BrandLogo className="h-9 w-9 text-foreground" />
             <span>WINTER ARC</span>
           </Link>
@@ -65,7 +65,7 @@ export default function Layout() {
 
       {/* Mobile Top Header */}
       <header className="flex h-14 items-center justify-between border-b bg-card px-4 md:hidden sticky top-0 z-50">
-        <Link to="/" className="flex items-center gap-2 font-bold tracking-tight text-lg">
+        <Link to="/dashboard" className="flex items-center gap-2 font-bold tracking-tight text-lg">
           <BrandLogo className="h-8 w-8 text-foreground" />
           <span>WINTER ARC</span>
         </Link>

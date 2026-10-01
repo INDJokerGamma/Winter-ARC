@@ -34,7 +34,7 @@ export default function Register() {
       } else {
         setSuccess(true)
         if (data.session) {
-          navigate('/')
+          navigate('/dashboard')
         }
       }
     } catch (err) {

@@ -6,6 +6,7 @@ import { AuthProvider } from "@/components/AuthProvider"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import Login from "@/pages/Login"
 import Register from "@/pages/Register"
+import LandingPage from "@/pages/LandingPage"
 import Onboarding from "@/pages/Onboarding"
 import Goals from "@/pages/Goals"
 import DailyTracker from "@/pages/DailyTracker"
@@ -22,11 +23,12 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-            
-            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+
+            <Route path="/dashboard" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
               <Route index element={<Dashboard />} />
               <Route path="goals" element={<Goals />} />
               <Route path="tracker" element={<DailyTracker />} />
