@@ -5,6 +5,7 @@ import {
   fetchDashboardStats,
   fetchGoals,
   fetchActiveChallenge,
+  fetchActivityLogs,
   reorderGoals,
   type DashboardStats,
   type Goal,
@@ -30,9 +31,11 @@ export default function Dashboard() {
           fetchGoals(user!.id),
           fetchActiveChallenge(user!.id),
         ])
+        const todayLogs = await fetchActivityLogs(user!.id, new Date().toISOString().split('T')[0])
         setStats(s)
         setGoals(g)
         setChallenge(c)
+        setCompletedTodayGoalIds(new Set(todayLogs.filter(log => log.status === 'completed').map(log => log.goal_id)))
       } catch (err) {
         console.error('Dashboard load error:', err)
       } finally {
@@ -41,6 +44,8 @@ export default function Dashboard() {
     }
     load()
   }, [user])
+
+  const [completedTodayGoalIds, setCompletedTodayGoalIds] = useState<Set<string>>(new Set())
 
   if (loading) {
     return (
@@ -56,7 +61,9 @@ export default function Dashboard() {
   const daysRemaining = Math.max(0, totalDays - daysElapsed)
   const challengeProgress = totalDays > 0 ? Math.min(100, Math.round((daysElapsed / totalDays) * 100)) : 0
 
-  const recentGoals = goals.filter(g => g.status === 'active').slice(0, 5)
+  const recentGoals = goals
+    .filter(g => g.status === 'active' && !completedTodayGoalIds.has(g.id))
+    .slice(0, 5)
 
   const handleReorder = (reorderedActiveGoals: Goal[]) => {
     if (!user) return
@@ -150,12 +157,12 @@ export default function Dashboard() {
           </div>
           {recentGoals.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-sm text-muted-foreground mb-3">No active goals yet.</p>
+              <p className="text-sm text-muted-foreground mb-3">All active goals are complete for today.</p>
               <Link
-                to="/dashboard/goals"
+                to="/dashboard/tracker"
                 className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
-                Create your first goal
+                View today&apos;s tracker
               </Link>
             </div>
           ) : (
