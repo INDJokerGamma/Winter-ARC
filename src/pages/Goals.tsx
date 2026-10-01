@@ -101,6 +101,12 @@ export default function Goals() {
     if (filter === 'all') return g.status !== 'archived'
     return g.status === filter
   })
+  const orderedFilteredGoals = filter === 'all'
+    ? [
+        ...filteredGoals.filter(goal => goal.status !== 'completed'),
+        ...filteredGoals.filter(goal => goal.status === 'completed'),
+      ]
+    : filteredGoals
 
   return (
     <div className="flex flex-col gap-8">
@@ -138,7 +144,7 @@ export default function Goals() {
         <div className="flex h-32 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent" />
         </div>
-      ) : filteredGoals.length === 0 ? (
+      ) : orderedFilteredGoals.length === 0 ? (
         <div className="rounded-xl border border-dashed p-12 text-center flex flex-col items-center">
           <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center mb-4">
             <Target className="h-7 w-7 text-muted-foreground" />
@@ -160,7 +166,7 @@ export default function Goals() {
         </div>
       ) : (
         <SortableGoalList
-          goals={filteredGoals}
+          goals={orderedFilteredGoals}
           onReorder={handleReorder}
           className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
         >
