@@ -16,6 +16,8 @@ export function SortableGoalList({ goals, onReorder, children, className = '' }:
   const overIdRef = useRef<string | null>(null)
   const holdTimerRef = useRef<number | null>(null)
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null)
+  const pointerElementRef = useRef<HTMLDivElement | null>(null)
+  const pointerIdRef = useRef<number | null>(null)
 
   const moveGoal = (targetId: string) => {
     const currentDraggedId = draggedIdRef.current
@@ -32,12 +34,25 @@ export function SortableGoalList({ goals, onReorder, children, className = '' }:
 
   const clearDragState = () => {
     if (holdTimerRef.current !== null) window.clearTimeout(holdTimerRef.current)
+    if (pointerElementRef.current && pointerIdRef.current !== null && pointerElementRef.current.hasPointerCapture(pointerIdRef.current)) {
+      pointerElementRef.current.releasePointerCapture(pointerIdRef.current)
+    }
     holdTimerRef.current = null
     draggedIdRef.current = null
     overIdRef.current = null
     pointerStartRef.current = null
+    pointerElementRef.current = null
+    pointerIdRef.current = null
     setDraggedId(null)
     setOverId(null)
+  }
+
+  const activateDrag = (goalId: string, element: HTMLDivElement, pointerId: number) => {
+    draggedIdRef.current = goalId
+    overIdRef.current = goalId
+    setDraggedId(goalId)
+    setOverId(goalId)
+    element.setPointerCapture(pointerId)
   }
 
   return (
@@ -45,16 +60,20 @@ export function SortableGoalList({ goals, onReorder, children, className = '' }:
       {goals.map(goal => (
         <div
           key={goal.id}
-          draggable
           data-sortable-goal-id={goal.id}
           style={{ touchAction: 'pan-y' }}
           onPointerDown={event => {
             if (event.pointerType === 'mouse' && event.button !== 0) return
+            pointerElementRef.current = event.currentTarget
+            pointerIdRef.current = event.pointerId
             pointerStartRef.current = { x: event.clientX, y: event.clientY }
-            holdTimerRef.current = window.setTimeout(() => {
-              draggedIdRef.current = goal.id
-              setDraggedId(goal.id)
-            }, 250)
+            if (event.pointerType === 'mouse') {
+              activateDrag(goal.id, event.currentTarget, event.pointerId)
+            } else {
+              holdTimerRef.current = window.setTimeout(() => {
+                activateDrag(goal.id, event.currentTarget, event.pointerId)
+              }, 350)
+            }
           }}
           onPointerMove={event => {
             const start = pointerStartRef.current
@@ -71,30 +90,12 @@ export function SortableGoalList({ goals, onReorder, children, className = '' }:
             overIdRef.current = targetId
             setOverId(targetId)
           }}
-          onPointerUp={event => {
+          onPointerUp={() => {
             if (draggedIdRef.current && overIdRef.current) moveGoal(overIdRef.current)
-            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-              event.currentTarget.releasePointerCapture(event.pointerId)
-            }
             clearDragState()
           }}
           onPointerCancel={clearDragState}
-          onDragStart={() => {
-            draggedIdRef.current = goal.id
-            setDraggedId(goal.id)
-          }}
-          onDragOver={event => {
-            event.preventDefault()
-            overIdRef.current = goal.id
-            setOverId(goal.id)
-          }}
-          onDrop={event => {
-            event.preventDefault()
-            moveGoal(goal.id)
-            clearDragState()
-          }}
-          onDragEnd={clearDragState}
-          className={`relative cursor-grab touch-none active:cursor-grabbing ${
+          className={`relative cursor-grab select-none active:cursor-grabbing ${
             overId === goal.id && draggedId !== goal.id ? 'before:absolute before:-top-2 before:left-0 before:right-0 before:h-1 before:rounded-full before:bg-primary' : ''
           } ${draggedId === goal.id ? 'opacity-45' : ''}`}
         >
