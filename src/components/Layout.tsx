@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom"
 import { Home, Target, CalendarDays, BarChart2, Award, Settings, CheckSquare } from "lucide-react"
 import { useAuth } from "./AuthProvider"
+import { BrandLogo } from "./BrandLogo"
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: Home },
@@ -22,7 +23,8 @@ export default function Layout() {
       <aside className="hidden w-64 flex-col border-r bg-card md:flex">
         <div className="flex h-14 items-center border-b px-6">
           <Link to="/" className="flex items-center gap-2 font-bold tracking-tight text-lg">
-            ❄️ WINTER ARC
+            <BrandLogo className="h-9 w-9 text-foreground" />
+            <span>WINTER ARC</span>
           </Link>
         </div>
         <nav className="flex-1 space-y-1 p-4">
@@ -63,8 +65,9 @@ export default function Layout() {
 
       {/* Mobile Top Header */}
       <header className="flex h-14 items-center justify-between border-b bg-card px-4 md:hidden sticky top-0 z-50">
-        <Link to="/" className="font-bold tracking-tight text-lg">
-          ❄️ WINTER ARC
+        <Link to="/" className="flex items-center gap-2 font-bold tracking-tight text-lg">
+          <BrandLogo className="h-8 w-8 text-foreground" />
+          <span>WINTER ARC</span>
         </Link>
         <button onClick={signOut} className="text-sm font-medium text-muted-foreground">
           Sign Out

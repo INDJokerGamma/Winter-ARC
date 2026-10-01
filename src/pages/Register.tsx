@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { BrandLogo } from '@/components/BrandLogo'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -59,7 +60,8 @@ export default function Register() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-8 rounded-xl border bg-card p-8 shadow-lg">
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">WINTER ARC</h1>
+          <BrandLogo className="mx-auto h-24 w-24 text-foreground" />
+          <h1 className="mt-4 text-3xl font-bold tracking-tight">WINTER ARC</h1>
           <p className="mt-2 text-sm text-muted-foreground">Create your account</p>
         </div>
 

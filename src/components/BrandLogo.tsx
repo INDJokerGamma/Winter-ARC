@@ -1,0 +1,32 @@
+type BrandLogoProps = {
+  className?: string
+  showWordmark?: boolean
+  wordmarkClassName?: string
+}
+
+export function BrandLogo({
+  className = 'h-14 w-14',
+  showWordmark = false,
+  wordmarkClassName = 'text-lg font-black tracking-tight text-foreground',
+}: BrandLogoProps) {
+  return (
+    <div className="inline-flex items-center gap-3">
+      <svg
+        viewBox="0 0 220 220"
+        className={className}
+        role="img"
+        aria-label="Winter Arc logo"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M53 67L95 33L116 62L98 142L69 127L54 104L53 67ZM167 67L125 33L104 62L122 142L151 127L166 104L167 67ZM75 89L43 109L56 137L92 157L109 120L75 89ZM145 89L177 109L164 137L128 157L111 120L145 89ZM89 120H131L143 175L110 210L77 175L89 120ZM82 152L62 177L73 194L104 190L96 160L82 152ZM138 152L158 177L147 194L116 190L124 160L138 152ZM86 190H134L126 220H94L86 190Z"
+          fill="currentColor"
+        />
+        <circle cx="110" cy="38" r="20" fill="currentColor" />
+        <path d="M94 101H126V135H94V101Z" fill="currentColor" />
+      </svg>
+      {showWordmark && <span className={wordmarkClassName}>WINTER ARC</span>}
+    </div>
+  )
+}
