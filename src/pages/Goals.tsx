@@ -209,16 +209,16 @@ function GoalCard({ goal, onEdit, onDelete, onComplete }: {
     <div className="group rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-all">
       <div className="flex items-start justify-between mb-3">
         <h3 className="font-semibold text-base leading-tight">{goal.title}</h3>
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           {goal.status === 'active' && (
-            <button onClick={onComplete} className="p-1 rounded hover:bg-green-500/10" title="Mark complete">
+            <button onPointerDown={event => event.stopPropagation()} onClick={onComplete} className="p-1 rounded hover:bg-green-500/10" title="Mark complete">
               <CheckCircle2 className="h-4 w-4 text-green-500" />
             </button>
           )}
-          <button onClick={onEdit} className="p-1 rounded hover:bg-muted" title="Edit">
+          <button onPointerDown={event => event.stopPropagation()} onClick={onEdit} className="p-1 rounded hover:bg-muted" title="Edit">
             <Edit3 className="h-4 w-4 text-muted-foreground" />
           </button>
-          <button onClick={onDelete} className="p-1 rounded hover:bg-destructive/10" title="Delete">
+          <button onPointerDown={event => event.stopPropagation()} onClick={onDelete} className="p-1 rounded hover:bg-destructive/10" title="Delete">
             <Trash2 className="h-4 w-4 text-destructive" />
           </button>
         </div>
