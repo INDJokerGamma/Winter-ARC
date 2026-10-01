@@ -5,12 +5,14 @@ import {
   fetchDashboardStats,
   fetchGoals,
   fetchActiveChallenge,
+  reorderGoals,
   type DashboardStats,
   type Goal,
   type Challenge,
 } from '@/services/dataService'
 import { differenceInDays, format } from 'date-fns'
 import { Target, Flame, TrendingUp, CheckCircle2, Calendar, ArrowRight } from 'lucide-react'
+import { SortableGoalList } from '@/components/SortableGoalList'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -55,6 +57,21 @@ export default function Dashboard() {
   const challengeProgress = totalDays > 0 ? Math.min(100, Math.round((daysElapsed / totalDays) * 100)) : 0
 
   const recentGoals = goals.filter(g => g.status === 'active').slice(0, 5)
+
+  const handleReorder = (reorderedActiveGoals: Goal[]) => {
+    if (!user) return
+    const activeIds = new Set(reorderedActiveGoals.map(goal => goal.id))
+    let activeIndex = 0
+    const reorderedGoals = goals.map(goal => {
+      if (!activeIds.has(goal.id)) return goal
+      return reorderedActiveGoals[activeIndex++]
+    })
+
+    setGoals(reorderedGoals)
+    void reorderGoals(user.id, reorderedGoals.map(goal => goal.id)).catch(error => {
+      console.error('Failed to save goal order:', error)
+    })
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -142,8 +159,8 @@ export default function Dashboard() {
               </Link>
             </div>
           ) : (
-            <div className="space-y-3">
-              {recentGoals.map(goal => (
+            <SortableGoalList goals={recentGoals} onReorder={handleReorder} className="space-y-3">
+              {goal => (
                 <div key={goal.id} className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors">
                   <div className={`h-2 w-2 rounded-full ${
                     goal.priority === 'High' ? 'bg-red-500' :
@@ -157,8 +174,8 @@ export default function Dashboard() {
                     {goal.goal_type}
                   </span>
                 </div>
-              ))}
-            </div>
+              )}
+            </SortableGoalList>
           )}
         </div>
 

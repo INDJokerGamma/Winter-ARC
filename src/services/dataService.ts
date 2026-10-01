@@ -18,6 +18,7 @@ export interface Goal {
   due_date: string
   recurrence_config: any | null
   status: 'not_started' | 'active' | 'paused' | 'completed' | 'archived'
+  display_order: number | null
   created_at: string
   updated_at: string
   archived_at: string | null
@@ -40,14 +41,55 @@ export interface GoalCreateInput {
   challenge_id?: string
 }
 
+function localGoalOrderKey(userId: string) {
+  return `winter-arc-goal-order:${userId}`
+}
+
+function applyLocalGoalOrder(userId: string, goals: Goal[]) {
+  const storedOrder = window.localStorage.getItem(localGoalOrderKey(userId))
+  if (!storedOrder) return goals
+
+  try {
+    const order = JSON.parse(storedOrder) as string[]
+    const positions = new Map(order.map((goalId, index) => [goalId, index]))
+    return [...goals].sort((a, b) => {
+      const aPosition = positions.get(a.id) ?? order.length
+      const bPosition = positions.get(b.id) ?? order.length
+      return aPosition - bPosition
+    })
+  } catch {
+    window.localStorage.removeItem(localGoalOrderKey(userId))
+    return goals
+  }
+}
+
+function saveLocalGoalOrder(userId: string, goalIds: string[]) {
+  window.localStorage.setItem(localGoalOrderKey(userId), JSON.stringify(goalIds))
+}
+
 export async function fetchGoals(userId: string) {
-  const { data, error } = await supabase
+  const orderedResult = await supabase
+    .from('goals')
+    .select('*, category:categories(*)')
+    .eq('user_id', userId)
+    .order('display_order', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: false })
+
+  if (!orderedResult.error) {
+    const goals = (orderedResult.data || []) as Goal[]
+    return goals.some(goal => goal.display_order != null) ? goals : applyLocalGoalOrder(userId, goals)
+  }
+
+  // Keep existing users' goals visible until the display-order migration is applied.
+  console.warn('Goal ordering is unavailable; falling back to creation order:', orderedResult.error.message)
+  const fallbackResult = await supabase
     .from('goals')
     .select('*, category:categories(*)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
-  if (error) throw error
-  return (data || []) as Goal[]
+
+  if (fallbackResult.error) throw fallbackResult.error
+  return applyLocalGoalOrder(userId, (fallbackResult.data || []) as Goal[])
 }
 
 export async function createGoal(userId: string, input: GoalCreateInput) {
@@ -77,6 +119,32 @@ export async function deleteGoal(goalId: string) {
     .delete()
     .eq('id', goalId)
   if (error) throw error
+}
+
+export async function reorderGoals(userId: string, goalIds: string[]) {
+  const results = await Promise.all(
+    goalIds.map((goalId, index) =>
+      supabase
+        .from('goals')
+        .update({ display_order: index } as any)
+        .eq('id', goalId)
+        .eq('user_id', userId)
+    ),
+  )
+
+  const failed = results.find(result => result.error)
+  if (!failed?.error) {
+    saveLocalGoalOrder(userId, goalIds)
+    return
+  }
+
+  // Keep drag-and-drop functional before the display-order migration is deployed.
+  if (failed.error.message.toLowerCase().includes('display_order')) {
+    saveLocalGoalOrder(userId, goalIds)
+    return
+  }
+
+  throw failed.error
 }
 
 // ── Activity Log Service ──

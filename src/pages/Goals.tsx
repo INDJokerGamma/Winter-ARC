@@ -7,12 +7,14 @@ import {
   createGoal,
   updateGoal,
   deleteGoal,
+  reorderGoals,
   type Goal,
   type Category,
   type Challenge,
   type GoalCreateInput,
 } from '@/services/dataService'
 import { Plus, Trash2, Edit3, X, Target, CheckCircle2 } from 'lucide-react'
+import { SortableGoalList } from '@/components/SortableGoalList'
 
 const GOAL_TYPES: { value: Goal['goal_type']; label: string; desc: string }[] = [
   { value: 'habit', label: 'Habit', desc: 'Recurring daily/weekly action' },
@@ -79,6 +81,22 @@ export default function Goals() {
     loadData()
   }
 
+  const handleReorder = (reorderedVisibleGoals: Goal[]) => {
+    if (!user) return
+    const visibleIds = new Set(reorderedVisibleGoals.map(goal => goal.id))
+    let visibleIndex = 0
+    const reorderedGoals = goals.map(goal => {
+      if (!visibleIds.has(goal.id)) return goal
+      return reorderedVisibleGoals[visibleIndex++]
+    })
+
+    setGoals(reorderedGoals)
+    void reorderGoals(user.id, reorderedGoals.map(goal => goal.id)).catch(error => {
+      console.error('Failed to save goal order:', error)
+      void loadData()
+    })
+  }
+
   const filteredGoals = goals.filter(g => {
     if (filter === 'all') return g.status !== 'archived'
     return g.status === filter
@@ -141,17 +159,20 @@ export default function Goals() {
           )}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredGoals.map(goal => (
+        <SortableGoalList
+          goals={filteredGoals}
+          onReorder={handleReorder}
+          className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+        >
+          {goal => (
             <GoalCard
-              key={goal.id}
               goal={goal}
               onEdit={() => { setEditingGoal(goal); setShowModal(true) }}
               onDelete={() => handleDelete(goal.id)}
               onComplete={() => handleMarkComplete(goal.id)}
             />
-          ))}
-        </div>
+          )}
+        </SortableGoalList>
       )}
 
       {/* Modal */}

@@ -9,7 +9,7 @@ import {
   type DashboardStats,
 } from '@/services/dataService'
 import { format, subDays } from 'date-fns'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
 const PIE_COLORS = ['#22c55e', '#eab308', '#3b82f6', '#a855f7', '#ef4444']
 
@@ -165,6 +165,33 @@ export default function Analytics() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Completion Trend Line Chart */}
+      <div className="rounded-xl border bg-card p-6 shadow-sm">
+        <h3 className="font-semibold text-lg mb-4">Completion Trend</h3>
+        {weeklyData.every(d => d.total === 0) ? (
+          <div className="flex h-48 items-center justify-center">
+            <p className="text-sm text-muted-foreground">Complete activities to see your trend.</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={weeklyData}>
+              <XAxis dataKey="day" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+              <Tooltip
+                contentStyle={{
+                  background: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                }}
+              />
+              <Line type="monotone" dataKey="completed" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4 }} name="Completed" />
+              <Line type="monotone" dataKey="total" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} name="Total" />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* Goal Status Breakdown */}

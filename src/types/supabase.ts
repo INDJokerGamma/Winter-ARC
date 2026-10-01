@@ -133,6 +133,7 @@ export interface Database {
           due_date: string
           recurrence_config: Json | null
           status: string
+          display_order: number | null
           created_at: string
           updated_at: string
           archived_at: string | null
@@ -153,6 +154,7 @@ export interface Database {
           due_date: string
           recurrence_config?: Json | null
           status?: string
+          display_order?: number | null
           created_at?: string
           updated_at?: string
           archived_at?: string | null
@@ -173,6 +175,7 @@ export interface Database {
           due_date?: string
           recurrence_config?: Json | null
           status?: string
+          display_order?: number | null
           created_at?: string
           updated_at?: string
           archived_at?: string | null

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
+import { applyTheme, isTheme, type Theme, THEME_STORAGE_KEY } from '@/lib/theme'
 
 export default function Settings() {
   const { user, signOut } = useAuth()
   const [fullName, setFullName] = useState('')
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system')
+  const [theme, setTheme] = useState<Theme>('system')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
@@ -17,27 +18,16 @@ export default function Settings() {
       .from('profiles')
       .select('theme')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
-        if (data?.theme) setTheme(data.theme as 'light' | 'dark' | 'system')
+        if (isTheme(data?.theme)) setTheme(data.theme)
       })
   }, [user])
 
   // Apply theme
   useEffect(() => {
-    const root = document.documentElement
-    if (theme === 'dark') {
-      root.classList.add('dark')
-    } else if (theme === 'light') {
-      root.classList.remove('dark')
-    } else {
-      // system preference
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        root.classList.add('dark')
-      } else {
-        root.classList.remove('dark')
-      }
-    }
+    applyTheme(theme)
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
   }, [theme])
 
   const handleSave = async () => {
@@ -45,15 +35,19 @@ export default function Settings() {
     setSaving(true)
     try {
       // Update profile
-      await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
-        .update({ full_name: fullName, theme } as any)
-        .eq('id', user.id)
+        .upsert({ id: user.id, full_name: fullName, theme } as any, { onConflict: 'id' })
+
+      if (profileError) throw profileError
 
       // Update auth metadata
       await supabase.auth.updateUser({
         data: { full_name: fullName },
       })
+
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+      applyTheme(theme)
 
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
