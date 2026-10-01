@@ -337,19 +337,22 @@ export async function fetchDashboardStats(userId: string): Promise<DashboardStat
   const allGoals = goals || []
   const totalGoals = allGoals.length
   const activeGoals = allGoals.filter(g => g.status === 'active').length
+  const activeGoalIds = new Set(allGoals.filter(g => g.status === 'active').map(g => g.id))
   const completedGoals = allGoals.filter(g => g.status === 'completed').length
 
   // Today's logs
   const today = new Date().toISOString().split('T')[0]
   const { data: todayLogs } = await supabase
     .from('activity_logs')
-    .select('id, status')
+    .select('goal_id, status')
     .eq('user_id', userId)
     .eq('scheduled_date', today)
 
   const todayAll = todayLogs || []
-  const todayCompletedCount = todayAll.filter(l => l.status === 'completed').length
-  const todayTotalCount = todayAll.length
+  const todayCompletedCount = todayAll.filter(
+    log => log.status === 'completed' && activeGoalIds.has(log.goal_id),
+  ).length
+  const todayTotalCount = activeGoals
 
   // Streak calculation — count consecutive days with at least one completed log going backwards from today
   let currentStreak = 0
