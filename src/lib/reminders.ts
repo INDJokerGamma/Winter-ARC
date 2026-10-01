@@ -4,7 +4,7 @@ export const REMINDER_LAST_SENT_KEY = 'winter-arc-reminder-last-sent'
 
 export function maybeSendDailyReminder(remainingGoalCount: number) {
   if (remainingGoalCount === 0 || window.localStorage.getItem(REMINDERS_ENABLED_KEY) !== 'true') return
-  if (!('Notification' in window) || Notification.permission !== 'granted') return
+  if (!window.isSecureContext || !('Notification' in window) || Notification.permission !== 'granted') return
 
   const reminderTime = window.localStorage.getItem(REMINDER_TIME_KEY) || '18:00'
   const [hours, minutes] = reminderTime.split(':').map(Number)
@@ -15,8 +15,12 @@ export function maybeSendDailyReminder(remainingGoalCount: number) {
 
   if (now < reminderDate || window.localStorage.getItem(REMINDER_LAST_SENT_KEY) === today) return
 
-  new Notification('Winter Arc reminder', {
-    body: `${remainingGoalCount} goal${remainingGoalCount === 1 ? '' : 's'} still need attention today.`,
-  })
-  window.localStorage.setItem(REMINDER_LAST_SENT_KEY, today)
+  try {
+    new Notification('Winter Arc reminder', {
+      body: `${remainingGoalCount} goal${remainingGoalCount === 1 ? '' : 's'} still need attention today.`,
+    })
+    window.localStorage.setItem(REMINDER_LAST_SENT_KEY, today)
+  } catch (error) {
+    console.warn('Browser notifications are unavailable on this device:', error)
+  }
 }

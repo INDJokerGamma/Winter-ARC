@@ -30,9 +30,15 @@ export default function Settings() {
   }, [user])
 
   const updateReminders = async (enabled: boolean) => {
-    if (enabled && 'Notification' in window) {
-      const permission = await Notification.requestPermission()
-      if (permission !== 'granted') return
+    if (enabled) {
+      if (!window.isSecureContext || !('Notification' in window)) return
+      try {
+        const permission = await Notification.requestPermission()
+        if (permission !== 'granted') return
+      } catch (error) {
+        console.warn('Browser notification permission is unavailable:', error)
+        return
+      }
     }
     setRemindersEnabled(enabled)
     window.localStorage.setItem(REMINDERS_ENABLED_KEY, String(enabled))
