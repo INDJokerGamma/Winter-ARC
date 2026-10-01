@@ -16,6 +16,7 @@ const navItems = [
 export default function Layout() {
   const location = useLocation()
   const { signOut, user } = useAuth()
+  const mobileNavItems = [...navItems.slice(0, 4), navItems[6]]
 
   return (
     <div className="flex min-h-screen flex-col bg-background md:flex-row">
@@ -83,7 +84,7 @@ export default function Layout() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 z-50 flex w-full border-t bg-card pb-safe md:hidden">
-        {navItems.slice(0, 5).map((item) => {
+        {mobileNavItems.map((item) => {
           const isActive = location.pathname === item.path
           return (
             <Link
