@@ -98,6 +98,8 @@ Before you begin, make sure you have:
 
    1. `supabase/migrations/00001_initial_schema.sql`
    2. `supabase/migrations/00002_daily_reflections.sql`
+   3. `supabase/migrations/00003_goal_display_order.sql`
+   4. `supabase/migrations/00004_harden_auth_trigger.sql`
 
    These migrations create the tables, profile trigger, reflection constraint, and Row Level Security policies used by the app.
 
@@ -127,6 +129,8 @@ Use the Supabase SQL Editor to run the app migrations in the order shown below:
 ```sql
 -- 1. supabase/migrations/00001_initial_schema.sql
 -- 2. supabase/migrations/00002_daily_reflections.sql
+-- 3. supabase/migrations/00003_goal_display_order.sql
+-- 4. supabase/migrations/00004_harden_auth_trigger.sql
 ```
 
 This sets up the schema and security policies needed for user profiles, goals, reflections, and related data.
