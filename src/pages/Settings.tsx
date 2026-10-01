@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { applyTheme, isTheme, type Theme, THEME_STORAGE_KEY } from '@/lib/theme'
+import { REMINDER_TIME_KEY, REMINDERS_ENABLED_KEY } from '@/lib/reminders'
 
 export default function Settings() {
   const { user, signOut } = useAuth()
@@ -9,10 +10,14 @@ export default function Settings() {
   const [theme, setTheme] = useState<Theme>('system')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [remindersEnabled, setRemindersEnabled] = useState(false)
+  const [reminderTime, setReminderTime] = useState('18:00')
 
   useEffect(() => {
     if (!user) return
     setFullName(user.user_metadata?.full_name || '')
+    setRemindersEnabled(window.localStorage.getItem(REMINDERS_ENABLED_KEY) === 'true')
+    setReminderTime(window.localStorage.getItem(REMINDER_TIME_KEY) || '18:00')
     // Load profile preferences
     supabase
       .from('profiles')
@@ -23,6 +28,20 @@ export default function Settings() {
         if (isTheme(data?.theme)) setTheme(data.theme)
       })
   }, [user])
+
+  const updateReminders = async (enabled: boolean) => {
+    if (enabled && 'Notification' in window) {
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') return
+    }
+    setRemindersEnabled(enabled)
+    window.localStorage.setItem(REMINDERS_ENABLED_KEY, String(enabled))
+  }
+
+  const updateReminderTime = (time: string) => {
+    setReminderTime(time)
+    window.localStorage.setItem(REMINDER_TIME_KEY, time)
+  }
 
   // Apply theme
   useEffect(() => {
@@ -95,6 +114,40 @@ export default function Settings() {
             value={user?.email || ''}
             disabled
             className="w-full rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground cursor-not-allowed"
+          />
+        </div>
+      </div>
+
+      {/* Reminders */}
+      <div className="rounded-xl border bg-card p-6 shadow-sm space-y-5">
+        <div>
+          <h2 className="font-semibold text-lg">Daily reminders</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Get a browser notification when unfinished goals remain and Winter Arc is open.
+          </p>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <label htmlFor="daily-reminders" className="text-sm font-medium">Enable reminders</label>
+          <button
+            id="daily-reminders"
+            type="button"
+            role="switch"
+            aria-checked={remindersEnabled}
+            onClick={() => updateReminders(!remindersEnabled)}
+            className={`relative h-6 w-11 rounded-full transition-colors ${remindersEnabled ? 'bg-primary' : 'bg-muted'}`}
+          >
+            <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${remindersEnabled ? 'left-6' : 'left-1'}`} />
+          </button>
+        </div>
+        <div>
+          <label htmlFor="reminder-time" className="block text-sm font-medium mb-1.5">Reminder time</label>
+          <input
+            id="reminder-time"
+            type="time"
+            value={reminderTime}
+            onChange={event => updateReminderTime(event.target.value)}
+            disabled={!remindersEnabled}
+            className="rounded-md border bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
       </div>

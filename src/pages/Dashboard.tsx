@@ -6,20 +6,30 @@ import {
   fetchGoals,
   fetchActiveChallenge,
   fetchActivityLogs,
+  upsertActivityLog,
   reorderGoals,
   type DashboardStats,
   type Goal,
   type Challenge,
 } from '@/services/dataService'
-import { differenceInDays, format } from 'date-fns'
-import { Target, Flame, TrendingUp, CheckCircle2, Calendar, ArrowRight } from 'lucide-react'
+import { differenceInCalendarDays, differenceInDays, format } from 'date-fns'
+import { Target, Flame, TrendingUp, CheckCircle2, Calendar, ArrowRight, CircleCheck, Undo2, RefreshCw, Sparkles } from 'lucide-react'
 import { SortableGoalList } from '@/components/SortableGoalList'
+import { maybeSendDailyReminder } from '@/lib/reminders'
+import { MOTIVATION_QUOTES } from '@/data/motivationQuotes'
+
+const MOTIVATION_STORAGE_PREFIX = 'winter-arc-motivation:'
+const MOTIVATION_DAY_MS = 24 * 60 * 60 * 1000
 
 export default function Dashboard() {
   const { user } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [goals, setGoals] = useState<Goal[]>([])
   const [challenge, setChallenge] = useState<Challenge | null>(null)
+  const [completedTodayGoalIds, setCompletedTodayGoalIds] = useState<Set<string>>(new Set())
+  const [showCompletedToday, setShowCompletedToday] = useState(false)
+  const [undoGoalId, setUndoGoalId] = useState<string | null>(null)
+  const [motivationIndex, setMotivationIndex] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -45,7 +55,34 @@ export default function Dashboard() {
     load()
   }, [user])
 
-  const [completedTodayGoalIds, setCompletedTodayGoalIds] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    if (!loading) {
+      const remainingGoalCount = goals.filter(
+        goal => goal.status === 'active' && !completedTodayGoalIds.has(goal.id),
+      ).length
+      maybeSendDailyReminder(remainingGoalCount)
+    }
+  }, [loading, goals, completedTodayGoalIds])
+
+  useEffect(() => {
+    if (!user) return
+    const storageKey = `${MOTIVATION_STORAGE_PREFIX}${user.id}`
+    const stored = window.localStorage.getItem(storageKey)
+
+    try {
+      const saved = stored ? JSON.parse(stored) as { index: number; changedAt: number } : null
+      if (saved && saved.index >= 0 && saved.index < MOTIVATION_QUOTES.length && Date.now() - saved.changedAt < MOTIVATION_DAY_MS) {
+        setMotivationIndex(saved.index)
+        return
+      }
+    } catch {
+      window.localStorage.removeItem(storageKey)
+    }
+
+    const initialIndex = Math.floor(Math.random() * MOTIVATION_QUOTES.length)
+    setMotivationIndex(initialIndex)
+    window.localStorage.setItem(storageKey, JSON.stringify({ index: initialIndex, changedAt: Date.now() }))
+  }, [user])
 
   if (loading) {
     return (
@@ -61,9 +98,78 @@ export default function Dashboard() {
   const daysRemaining = Math.max(0, totalDays - daysElapsed)
   const challengeProgress = totalDays > 0 ? Math.min(100, Math.round((daysElapsed / totalDays) * 100)) : 0
 
-  const recentGoals = goals
-    .filter(g => g.status === 'active' && !completedTodayGoalIds.has(g.id))
-    .slice(0, 5)
+  const activeGoals = goals.filter(goal => goal.status === 'active')
+  const remainingGoals = activeGoals.filter(goal => !completedTodayGoalIds.has(goal.id))
+  const completedTodayGoals = activeGoals.filter(goal => completedTodayGoalIds.has(goal.id))
+  const recentGoals = (showCompletedToday ? [...remainingGoals, ...completedTodayGoals] : remainingGoals).slice(0, 5)
+  const todayTotal = activeGoals.length
+  const todayCompleted = completedTodayGoals.length
+  const todayProgress = todayTotal > 0 ? Math.round((todayCompleted / todayTotal) * 100) : 0
+  const categoryProgress = activeGoals.reduce<Record<string, { total: number; completed: number }>>((result, goal) => {
+    const category = goal.category?.name || 'Uncategorized'
+    result[category] ??= { total: 0, completed: 0 }
+    result[category].total += 1
+    if (completedTodayGoalIds.has(goal.id)) result[category].completed += 1
+    return result
+  }, {})
+
+  const handleQuickComplete = async (goal: Goal) => {
+    if (!user) return
+    try {
+      await upsertActivityLog(user.id, {
+        goal_id: goal.id,
+        scheduled_date: new Date().toISOString().split('T')[0],
+        status: 'completed',
+        quantity: goal.target_value || undefined,
+      })
+      setCompletedTodayGoalIds(previous => new Set(previous).add(goal.id))
+      setUndoGoalId(goal.id)
+      setStats(previous => previous ? {
+        ...previous,
+        todayCompletedCount: Math.min(previous.todayCompletedCount + 1, previous.todayTotalCount),
+      } : previous)
+      window.setTimeout(() => setUndoGoalId(previous => previous === goal.id ? null : previous), 4000)
+    } catch (error) {
+      console.error('Failed to complete goal:', error)
+    }
+  }
+
+  const handleUndoComplete = async (goal: Goal) => {
+    if (!user) return
+    try {
+      await upsertActivityLog(user.id, {
+        goal_id: goal.id,
+        scheduled_date: new Date().toISOString().split('T')[0],
+        status: 'not_completed',
+      })
+      setCompletedTodayGoalIds(previous => {
+        const next = new Set(previous)
+        next.delete(goal.id)
+        return next
+      })
+      setUndoGoalId(null)
+      setStats(previous => previous ? {
+        ...previous,
+        todayCompletedCount: Math.max(0, previous.todayCompletedCount - 1),
+      } : previous)
+    } catch (error) {
+      console.error('Failed to undo goal completion:', error)
+    }
+  }
+
+  const showRandomMotivation = () => {
+    let nextIndex = motivationIndex
+    while (nextIndex === motivationIndex && MOTIVATION_QUOTES.length > 1) {
+      nextIndex = Math.floor(Math.random() * MOTIVATION_QUOTES.length)
+    }
+    setMotivationIndex(nextIndex)
+    if (user) {
+      window.localStorage.setItem(
+        `${MOTIVATION_STORAGE_PREFIX}${user.id}`,
+        JSON.stringify({ index: nextIndex, changedAt: Date.now() }),
+      )
+    }
+  }
 
   const handleReorder = (reorderedActiveGoals: Goal[]) => {
     if (!user) return
@@ -90,6 +196,30 @@ export default function Dashboard() {
         <p className="text-muted-foreground mt-1">
           {challenge ? `Day ${daysElapsed} of your ${totalDays}-day challenge` : 'Start a challenge to begin tracking'}
         </p>
+      </div>
+
+      {/* Motivation */}
+      <div className="w-full rounded-xl border bg-gradient-to-br from-primary/10 via-card to-cyan-500/10 p-6 text-left shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+            <Sparkles className="h-4 w-4" />
+            Motivation
+          </div>
+          <button
+            type="button"
+            onClick={showRandomMotivation}
+            className="inline-flex items-center gap-2 rounded-md border bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:bg-background hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            aria-label="Change motivation quote"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Change quote
+          </button>
+        </div>
+        <p className="mt-4 max-w-3xl text-xl font-semibold leading-relaxed" aria-live="polite">
+          “{MOTIVATION_QUOTES[motivationIndex].quote}”
+        </p>
+        <p className="mt-3 text-sm text-muted-foreground">— {MOTIVATION_QUOTES[motivationIndex].author}</p>
+        <p className="mt-4 text-xs font-medium text-muted-foreground">Your quote stays for 24 hours unless you change it.</p>
       </div>
 
       {/* Challenge Progress Bar */}
@@ -151,13 +281,23 @@ export default function Dashboard() {
         <div className="rounded-xl border bg-card p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-lg">Active Goals</h3>
-            <Link to="/dashboard/goals" className="text-sm text-primary hover:underline flex items-center gap-1">
-              View all <ArrowRight className="h-3 w-3" />
-            </Link>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowCompletedToday(previous => !previous)}
+                className="text-xs font-medium text-muted-foreground hover:text-foreground"
+              >
+                {showCompletedToday ? 'Hide completed' : 'Show completed'}
+              </button>
+              <Link to="/dashboard/goals" className="text-sm text-primary hover:underline flex items-center gap-1">
+                View all <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
           </div>
           {recentGoals.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-sm text-muted-foreground mb-3">All active goals are complete for today.</p>
+              <CircleCheck className="mx-auto mb-3 h-9 w-9 text-green-500" />
+              <p className="text-sm font-medium mb-1">All active goals are complete for today.</p>
+              <p className="text-xs text-muted-foreground mb-3">That is a strong finish. Keep the momentum going.</p>
               <Link
                 to="/dashboard/tracker"
                 className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
@@ -174,15 +314,42 @@ export default function Dashboard() {
                     goal.priority === 'Medium' ? 'bg-amber-500' : 'bg-green-500'
                   }`} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{goal.title}</p>
+                    <p className={`text-sm font-medium truncate ${completedTodayGoalIds.has(goal.id) ? 'line-through text-muted-foreground' : ''}`}>{goal.title}</p>
                     <p className="text-xs text-muted-foreground capitalize">{goal.goal_type}</p>
+                    <p className={`text-xs mt-1 ${getDueDateClass(goal)}`}>{getDueDateLabel(goal)}</p>
                   </div>
-                  <span className="text-xs rounded-full bg-primary/10 text-primary px-2 py-0.5 capitalize">
-                    {goal.goal_type}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="hidden sm:inline rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs capitalize">
+                      {goal.goal_type}
+                    </span>
+                    {completedTodayGoalIds.has(goal.id) ? (
+                      <button
+                        onPointerDown={event => event.stopPropagation()}
+                        onClick={() => handleUndoComplete(goal)}
+                        className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        title="Undo completion"
+                      >
+                        <Undo2 className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <button
+                        onPointerDown={event => event.stopPropagation()}
+                        onClick={() => handleQuickComplete(goal)}
+                        className="rounded-md p-1.5 text-green-600 hover:bg-green-500/10 dark:text-green-400"
+                        title="Mark complete"
+                      >
+                        <CircleCheck className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </SortableGoalList>
+          )}
+          {undoGoalId && (
+            <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+              Goal completed. Use the undo button to restore it to today&apos;s list.
+            </p>
           )}
         </div>
 
@@ -229,8 +396,65 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-xl border bg-card p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-lg">Today&apos;s completion</h3>
+              <p className="text-sm text-muted-foreground">Keep the chain moving.</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-primary">{todayProgress}%</p>
+              <p className="text-xs text-muted-foreground">{todayCompleted} of {todayTotal}</p>
+            </div>
+          </div>
+          <div className="mt-5 h-3 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-gradient-to-r from-primary to-cyan-400 transition-all" style={{ width: `${todayProgress}%` }} />
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-card p-6 shadow-sm">
+          <h3 className="font-semibold text-lg mb-4">Progress by category</h3>
+          {Object.keys(categoryProgress).length === 0 ? (
+            <p className="text-sm text-muted-foreground">Create an active goal to start tracking categories.</p>
+          ) : (
+            <div className="space-y-3">
+              {Object.entries(categoryProgress).map(([category, progress]) => {
+                const percent = Math.round((progress.completed / progress.total) * 100)
+                return (
+                  <div key={category}>
+                    <div className="mb-1 flex justify-between text-xs">
+                      <span className="font-medium">{category}</span>
+                      <span className="text-muted-foreground">{progress.completed}/{progress.total}</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${percent}%` }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
+}
+
+function getDueDateLabel(goal: Goal) {
+  const daysUntilDue = differenceInCalendarDays(new Date(goal.due_date), new Date())
+  if (daysUntilDue < 0) return `Overdue · ${format(new Date(goal.due_date), 'MMM d')}`
+  if (daysUntilDue === 0) return 'Due today'
+  if (daysUntilDue === 1) return 'Due tomorrow'
+  return `Due ${format(new Date(goal.due_date), 'MMM d')}`
+}
+
+function getDueDateClass(goal: Goal) {
+  const daysUntilDue = differenceInCalendarDays(new Date(goal.due_date), new Date())
+  if (daysUntilDue < 0) return 'text-red-500'
+  if (daysUntilDue <= 1) return 'text-amber-500'
+  return 'text-muted-foreground'
 }
 
 function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string | number; sub: string }) {
