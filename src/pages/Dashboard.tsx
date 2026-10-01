@@ -127,7 +127,7 @@ export default function Dashboard() {
         <div className="rounded-xl border bg-card p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-lg">Active Goals</h3>
-            <Link to="/goals" className="text-sm text-primary hover:underline flex items-center gap-1">
+            <Link to="/dashboard/goals" className="text-sm text-primary hover:underline flex items-center gap-1">
               View all <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
@@ -135,7 +135,7 @@ export default function Dashboard() {
             <div className="text-center py-8">
               <p className="text-sm text-muted-foreground mb-3">No active goals yet.</p>
               <Link
-                to="/goals"
+                to="/dashboard/goals"
                 className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
                 Create your first goal
@@ -167,7 +167,7 @@ export default function Dashboard() {
           <h3 className="font-semibold text-lg mb-4">Quick Actions</h3>
           <div className="grid gap-3">
             <Link
-              to="/tracker"
+              to="/dashboard/tracker"
               className="flex items-center gap-3 rounded-lg border p-4 hover:bg-muted/50 transition-colors group"
             >
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
@@ -179,7 +179,7 @@ export default function Dashboard() {
               </div>
             </Link>
             <Link
-              to="/calendar"
+              to="/dashboard/calendar"
               className="flex items-center gap-3 rounded-lg border p-4 hover:bg-muted/50 transition-colors group"
             >
               <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
@@ -191,7 +191,7 @@ export default function Dashboard() {
               </div>
             </Link>
             <Link
-              to="/analytics"
+              to="/dashboard/analytics"
               className="flex items-center gap-3 rounded-lg border p-4 hover:bg-muted/50 transition-colors group"
             >
               <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
